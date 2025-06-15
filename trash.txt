@@ -1,0 +1,3 @@
+node --max-old-space-size=2048 new.js
+
+node --inspect new.js
