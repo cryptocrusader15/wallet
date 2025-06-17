@@ -10,5 +10,5 @@ function startScript(name, file) {
   });
 }
 
-startScript('Monitor', 'monitor.js');
+startScript('Monitor', 'new.js');
 startScript('Telegram', 'telegram.js');

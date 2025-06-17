@@ -7,4 +7,5 @@ git add .gitignore
 git commit -m "Update .gitignore"
 git push origin main
 git add -A
+git commit -m "Cleaned up compare/find.js, added index.js, updated code"
 
