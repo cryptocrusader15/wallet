@@ -4,11 +4,22 @@ const path = require('path');
 const readline = require('readline');
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
+const { createClient } = require('redis');
 
-const apiId = parseInt(process.env.API_ID);    //25105144;
-const apiHash = process.env.API_HASH;   //'02b5c2c947f7eb230086d73a57d82379';
-const stringSession = new StringSession(fs.readFileSync('./session.txt', 'utf-8').trim());
-//const TELEGRAM_BOT_TOKEN = '7860048597:AAGv1eEree3HniaSlDDJiJl8fV6dWc2Ohk4';
+
+const apiId = parseInt(process.env.API_ID);   
+const apiHash = process.env.API_HASH;   
+//const stringSession = new StringSession(fs.readFileSync('./session.txt', 'utf-8').trim());
+const stringSession = new StringSession(process.env.TELEGRAM_SESSION || '');
+
+/*const redis = createClient({ url: process.env.REDIS_URL });
+redis.connect();
+redis.on('error', err => {
+    console.error('Redis error:', err); // <- show the whole error
+});*/
+
+
+
 const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => isNaN(id) ? id : parseInt(id)); /*[
   '@addstests',
   -1002632426236,
@@ -31,8 +42,43 @@ const client = new TelegramClient(stringSession, apiId, apiHash, {
   console.log("✅ Logged in as user");
   console.log("🔐 Session string:\n", client.session.save());
 
+// Listen to messages from Redis pub/sub
+ /* await redis.subscribe('token-buys', async (message) => {
+    try {
+      const data = JSON.parse(message);
+      const {
+        timestamp,
+        buyer,
+        token,
+        tokenName,
+        recipient,
+        txHash,
+        dexscreenerUrl
+      } = data;
+
+      const text = `🚨 *Token Buy Detected!*\n\n🕒 Time: \`${timestamp}\`\n👤 Buyer: \`${buyer}\`\n🎯 Token: \`${tokenName}\`\n📦 Token Address: \`${token}\`\n📥 Recipient: \`${recipient}\`\n🔗 [View Tx](https://bscscan.com/tx/${txHash})\n📊 [Dexscreener Chart](${dexscreenerUrl})`;
+
+      for (const chatId of TELEGRAM_CHAT_IDS) {
+        try {
+          await client.sendMessage(chatId, {
+            message: text,
+            parseMode: 'markdown'
+          });
+          console.log(`✅ Sent to ${chatId}`);
+        } catch (err) {
+          console.error(`❌ Failed to send to ${chatId}:`, err.message);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Redis message error:', err.message);
+    }
+  });
+})();*/
+  
     // Save session to disk
-  fs.writeFileSync('session.txt', client.session.save());
+  //fs.writeFileSync('session.txt', client.session.save());
+  
+
   
   // Function to send message via user session
   async function sendMessageToAllChats(text) {
@@ -72,4 +118,5 @@ const client = new TelegramClient(stringSession, apiId, apiHash, {
 
   console.log('📡 Watching logs.csv for new wallet activity...');
   setInterval(checkCSV, POLL_INTERVAL);
-})();
+})
+();

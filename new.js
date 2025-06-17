@@ -2,12 +2,20 @@ require('dotenv').config();
 const Web3 = require('web3');
 const fs = require('fs');
 const path = require('path');
-const LRU = require('lru-cache');
+//const LRU = require('lru-cache');
 const { LRUCache } = require('lru-cache');
+const { createClient } = require('redis');
 
 const STATE_FILE = path.join(__dirname, 'state.json');
 const CSV_FILE = path.join(__dirname, 'logs.csv');
 const POLL_INTERVAL = 2000;
+
+/*const redis = createClient({ url: process.env.REDIS_URL });
+redis.on('error', err => {
+    console.error('Redis error:', err.message);
+});
+redis.connect();*/
+
 
 
 // Enhanced WebSocket configuration with BigInt support
@@ -75,11 +83,8 @@ function loadState() {
             const data = fs.readFileSync(STATE_FILE, 'utf8');
             const state = JSON.parse(data);
             //processedTransactions = new LRU({
-                const processedTransactions = new LRUCache({
-
-            max: 5000,
-            ttl: 1000 * 60 * 2
-            });
+           processedTransactions.clear();
+    
             (state.processedTransactions || []).forEach(tx => processedTransactions.set(tx, true));
 
             /*processedTransactions = new Map(
@@ -112,12 +117,13 @@ if (!fs.existsSync(CSV_FILE)) {
 }
 
 // Save entry to CSV
-function logToCSV(timestamp, buyer, token, tokenName, recipient, txHash,) {
+function logToCSV(timestamp, buyer, token, tokenName, recipient, txHash, dexscreenerUrl) {
     const line = `"${timestamp}","${buyer}","${token}","${tokenName}","${recipient}","${txHash}","${dexscreenerUrl}"\n`;
     fs.appendFile(CSV_FILE, line, err => {
         if (err) console.error('CSV write error:', err.message);
     });
 }
+
 
 // Pad address to 32 bytes
 function padAddress(address) {
@@ -197,16 +203,31 @@ async function getTokenName(tokenAddress) {
             if (isBuy && isTransferToTarget) {
                 const tokenName = await getTokenName(log.address);
                 const timestamp = new Date().toISOString();
+                const dexscreenerUrl = `https://dexscreener.com/bsc/${log.address}`;
+
                 console.log(`\n[${timestamp}] TOKEN BUY DETECTED`);
                 console.log(`Buyer: ${tx.from}`);
                 console.log(`Token: ${log.address}`);
                 console.log(`Token: ${tokenName}`);
                 console.log(`Amount: Received by ${toAddress}`);
+                console.log(`Dex: ${dexscreenerUrl}`);
                 console.log(`Txn: https://bscscan.com/tx/${log.transactionHash}`);
-                console.log(`Dex: https://dexscreener.com/bsc/${log.address}`);
                 console.log('----------------------------------------');
 
-                logToCSV(timestamp, tx.from, log.address, tokenName, toAddress, log.transactionHash);
+                /*const alert = {
+                timestamp,
+                 buyer: tx.from,
+                 token: log.address,
+                 tokenName,
+                 recipient: toAddress,
+                 txHash: log.transactionHash,
+                 dexscreenerUrl
+                };
+
+                await redis.publish('wallet_alerts', JSON.stringify(alert));
+                console.log('[ALERT]', alert);*/
+
+                logToCSV(timestamp, tx.from, log.address, tokenName, toAddress, dexscreenerUrl,log.transactionHash);
             }
         } catch (error) {
             console.error('Log processing error:', error.message);
