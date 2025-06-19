@@ -19,6 +19,27 @@ app.listen(PORT, () => {
   console.log(`🌐 Dummy server listening on port ${PORT}`);
 });
 
+const axios = require('axios');
+
+async function sendTelegramRestartAlert(processName, code) {
+  const message = `⚠️ *${processName}* crashed with code ${code} and was restarted.`;
+
+  const chatIds = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
+
+  for (const chatId of chatIds) {
+    try {
+      await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'Markdown'
+      });
+      console.log(`📢 Sent restart alert to ${chatId}`);
+    } catch (err) {
+      console.error(`❌ Failed to send restart alert to ${chatId}:`, err.message);
+    }
+  }
+}
+
 // === Auto-restart function ===
 function startProcess(name, script) {
   const child = spawn('node', [path.join(__dirname, script)], {
@@ -28,6 +49,7 @@ function startProcess(name, script) {
 
   child.on('close', (code) => {
     console.error(`❌ ${name} exited with code ${code}. Restarting in 5s...`);
+    sendTelegramRestartAlert(name, code); // 📢 Send alert on crash
     setTimeout(() => startProcess(name, script), 5000);
   });
 }
