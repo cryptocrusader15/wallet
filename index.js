@@ -19,5 +19,10 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Health check every 10 minutes (Render timeout workaround)
+setInterval(() => {
+  console.log('⏳ Still alive at', new Date().toISOString());
+}, 10 * 60 * 1000); // 10 minutes
+
 app.get('/', (_, res) => res.send('Bot is running.'));
 app.listen(PORT, () => console.log(`✅ Web server running on port ${PORT}`));
