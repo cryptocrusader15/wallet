@@ -1,28 +1,37 @@
+require('dotenv').config();
+const express = require('express');
 const { spawn } = require('child_process');
 const path = require('path');
 
-function startScript(name, file) {
-  const proc = spawn('node', [path.join(__dirname, file)], { stdio: 'inherit' });
-
-  proc.on('exit', (code) => {
-    console.error(`${name} exited with code ${code}. Restarting in 3s...`);
-    setTimeout(() => startScript(name, file), 3000);
-  });
-}
-
-startScript('Monitor', 'new.js');
-startScript('Telegram', 'telegram.js');
-
-
-// Render workaround: fake web server
-const express = require('express');
+// === Start dummy Express server for Render ===
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Health check every 10 minutes (Render timeout workaround)
-setInterval(() => {
-  console.log('⏳ Still alive at', new Date().toISOString());
-}, 10 * 60 * 1000); // 10 minutes
+app.get('/', (_req, res) => {
+  res.send('✅ Wallet monitor and Telegram bot are running');
+});
 
-app.get('/', (_, res) => res.send('Bot is running.'));
-app.listen(PORT, () => console.log(`✅ Web server running on port ${PORT}`));
+setInterval(() => {
+  console.log(`[KEEPALIVE] ${new Date().toISOString()}`);
+}, 10 * 60 * 1000); // Log every 10 min to prevent Render sleep
+
+app.listen(PORT, () => {
+  console.log(`🌐 Dummy server listening on port ${PORT}`);
+});
+
+// === Auto-restart function ===
+function startProcess(name, script) {
+  const child = spawn('node', [path.join(__dirname, script)], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+
+  child.on('close', (code) => {
+    console.error(`❌ ${name} exited with code ${code}. Restarting in 5s...`);
+    setTimeout(() => startProcess(name, script), 5000);
+  });
+}
+
+// === Start monitor.js and telegram.js ===
+startProcess('Monitor', 'new.js');
+startProcess('Telegram', 'telegram.js');
