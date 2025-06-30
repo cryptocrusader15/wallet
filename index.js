@@ -20,6 +20,7 @@ console.log(`🔗 Webhook set to: ${WEBHOOK_URL}`);
 
 // === 2. Handle Telegram webhook POST request ===
 app.post(`/bot${TOKEN}`, (req, res) => {
+  console.log('📥 Webhook received:', JSON.stringify(req.body, null, 2));
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
