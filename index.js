@@ -92,3 +92,8 @@ function startProcess(name, script) {
 
 startProcess('Wallet Monitor', 'new.js');
 startProcess('Telegram CSV Watcher', 'telegram.js');
+
+app.listen(PORT, () => {
+  console.log(`🌐 Webhook server running on port ${PORT}`);
+  bot.setWebHook(WEBHOOK_URL); // ✅ Safe to set webhook AFTER server is listening
+});
