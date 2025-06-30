@@ -5,39 +5,26 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
-app.use(express.json()); // Parse JSON for webhook updates
+app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBHOOK_URL = `${process.env.BASE_URL}/bot${TOKEN}`;
+const BASE_URL = process.env.BASE_URL; // e.g. https://wallet-t5vh.onrender.com
+const WEBHOOK_URL = `${BASE_URL}/bot${TOKEN}`;
 
-// Initialize Telegram bot (no polling, webhook only)
+// === 1. Initialize Telegram bot (webhook mode) ===
 const bot = new TelegramBot(TOKEN);
+bot.setWebHook(WEBHOOK_URL);
 
-// 🔗 Forward webhook requests from Telegram to bot
+console.log(`🔗 Webhook set to: ${WEBHOOK_URL}`);
+
+// === 2. Handle Telegram webhook POST request ===
 app.post(`/bot${TOKEN}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// 🟢 Basic web check route (for testing Render port binding)
-app.get('/', (_req, res) => {
-  console.log('Root route hit!');
-  res.send('✅ Webhook-based Telegram bot is live!');
-});
-
-// Set webhook after server starts
-app.listen(PORT, async () => {
-  console.log(`🌐 Server listening on port ${PORT}`);
-  try {
-    await bot.setWebHook(WEBHOOK_URL);
-    console.log(`📡 Webhook set to: ${WEBHOOK_URL}`);
-  } catch (e) {
-    console.error('❌ Failed to set webhook:', e.message);
-  }
-});
-
-// Handle /start command
+// === 3. Respond to commands ===
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, '👋 Welcome! Choose an option:', {
@@ -50,7 +37,6 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-// Handle button clicks
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -85,7 +71,17 @@ bot.on('callback_query', (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// === Spawn monitor.js and telegram.js ===
+// === 4. Dummy homepage ===
+app.get('/', (req, res) => {
+  res.send('✅ Webhook-based Telegram bot is live!');
+});
+
+// === 5. Start the Express server ===
+app.listen(PORT, () => {
+  console.log(`🚀 Server listening on port ${PORT}`);
+});
+
+// === 6. Start wallet monitor and Telegram CSV watcher ===
 function startProcess(name, script) {
   const child = spawn('node', [path.join(__dirname, script)], {
     stdio: 'inherit',
