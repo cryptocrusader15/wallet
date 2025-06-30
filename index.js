@@ -42,6 +42,8 @@ bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
 
+  console.log(`📥 Button clicked: ${data} from ${chatId}`);
+
   let response = '';
   let buttons = {
     reply_markup: {
@@ -66,11 +68,16 @@ bot.on('callback_query', (query) => {
   }
 
   if (response) {
-    bot.sendMessage(chatId, response, buttons);
+    bot.sendMessage(chatId, response, buttons)
+      .then(() => console.log(`📤 Sent response: ${response}`))
+      .catch(err => console.error('❌ Failed to send message:', err.message));
+  } else {
+    console.log(`⚠️ No response mapped for: ${data}`);
   }
 
   bot.answerCallbackQuery(query.id);
 });
+
 
 // === 4. Dummy homepage ===
 app.get('/', (req, res) => {
