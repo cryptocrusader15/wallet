@@ -1,46 +1,76 @@
 require('dotenv').config();
 const express = require('express');
+const TelegramBot = require('node-telegram-bot-api');
 const { spawn } = require('child_process');
 const path = require('path');
 
-// === Start dummy Express server for Render ===
 const app = express();
+app.use(express.json()); // for JSON body parsing
+
 const PORT = process.env.PORT || 3000;
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const WEBHOOK_URL = `${process.env.BASE_URL}/bot${TOKEN}`; // e.g. https://your-app.onrender.com/bot<token>
 
-app.get('/', (_req, res) => {
-  res.send('✅ Wallet monitor and Telegram bot are running');
-});
+// Create bot in webhook mode
+const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
 
-setInterval(() => {
-  console.log(`[KEEPALIVE] ${new Date().toISOString()}`);
-}, 10 * 60 * 1000); // Log every 10 min to prevent Render sleep
+// Set webhook to your Render app URL
+bot.setWebHook(WEBHOOK_URL);
 
-app.listen(PORT, () => {
-  console.log(`🌐 Dummy server listening on port ${PORT}`);
-});
+console.log(`🔗 Webhook set to: ${WEBHOOK_URL}`);
 
-const axios = require('axios');
-
-async function sendTelegramRestartAlert(processName, code) {
-  const message = `⚠️ *${processName}* crashed with code ${code} and was restarted.`;
-
-  const chatIds = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
-
-  for (const chatId of chatIds) {
-    try {
-      await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown'
-      });
-      console.log(`📢 Sent restart alert to ${chatId}`);
-    } catch (err) {
-      console.error(`❌ Failed to send restart alert to ${chatId}:`, err.message);
+// Respond to basic commands
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, '👋 Welcome! Choose an option:', {
+    reply_markup: {
+      inline_keyboard: [[
+        { text: 'Ping', callback_data: 'ping' },
+        { text: 'Status', callback_data: 'status' }
+      ]]
     }
-  }
-}
+  });
+});
 
-// === Auto-restart function ===
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+  let response = '';
+  let buttons = {
+    reply_markup: {
+      inline_keyboard: [[{ text: 'Main Menu', callback_data: 'main_menu' }]]
+    }
+  };
+
+  if (data === 'ping') {
+    response = '🏓 Pong! I’m awake.';
+  } else if (data === 'status') {
+    response = '✅ All systems operational.';
+  } else if (data === 'main_menu') {
+    response = '👋 Main Menu:', buttons = {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'Ping', callback_data: 'ping' },
+          { text: 'Status', callback_data: 'status' }
+        ]]
+      }
+    };
+  }
+
+  if (response) {
+    bot.sendMessage(chatId, response, buttons);
+  }
+
+  bot.answerCallbackQuery(query.id);
+});
+
+// Dummy home route for testing
+app.get('/', (req, res) => {
+  res.send('✅ Webhook-based Telegram bot is live!');
+});
+
+
+// === Start child scripts (new.js and telegram.js) ===
 function startProcess(name, script) {
   const child = spawn('node', [path.join(__dirname, script)], {
     stdio: 'inherit',
@@ -49,11 +79,9 @@ function startProcess(name, script) {
 
   child.on('close', (code) => {
     console.error(`❌ ${name} exited with code ${code}. Restarting in 5s...`);
-    sendTelegramRestartAlert(name, code); // 📢 Send alert on crash
     setTimeout(() => startProcess(name, script), 5000);
   });
 }
 
-// === Start monitor.js and telegram.js ===
-startProcess('Monitor', 'new.js');
-startProcess('Telegram', 'telegram.js');
+startProcess('Wallet Monitor', 'new.js');
+startProcess('Telegram CSV Watcher', 'telegram.js');

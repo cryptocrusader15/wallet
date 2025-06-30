@@ -13,8 +13,6 @@ const stringSession = new StringSession(process.env.TELEGRAM_SESSION || '');
 
 
 
-
-
 const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => isNaN(id) ? id : parseInt(id)); /*[
   '@addstests',
   -1002632426236,

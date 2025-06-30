@@ -4,8 +4,6 @@ node --inspect new.js
 
 
 git add .gitignore
-git commit -m "Update .gitignore"
-git push origin main
 git add -A
-git commit -m ""
-
+git commit -m "corrected trash"
+git push origin main
