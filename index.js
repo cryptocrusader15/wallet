@@ -17,6 +17,13 @@ const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
 // Set webhook to your Render app URL
 bot.setWebHook(WEBHOOK_URL);
 
+// ADD THIS to forward webhook requests to the bot
+app.post(`/bot${TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+
 console.log(`🔗 Webhook set to: ${WEBHOOK_URL}`);
 
 // Respond to basic commands
