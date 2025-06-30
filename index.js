@@ -12,8 +12,8 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = `${process.env.BASE_URL}/bot${TOKEN}`; // e.g. https://your-app.onrender.com/bot<token>
 
 // Create bot in webhook mode
-const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
-
+//const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
+const bot = new TelegramBot(TOKEN);
 // Set webhook to your Render app URL
 bot.setWebHook(WEBHOOK_URL);
 
