@@ -5,28 +5,39 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
-app.use(express.json()); // for JSON body parsing
+app.use(express.json()); // Parse JSON for webhook updates
 
 const PORT = process.env.PORT || 3000;
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBHOOK_URL = `${process.env.BASE_URL}/bot${TOKEN}`; // e.g. https://your-app.onrender.com/bot<token>
+const WEBHOOK_URL = `${process.env.BASE_URL}/bot${TOKEN}`;
 
-// Create bot in webhook mode
-//const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
+// Initialize Telegram bot (no polling, webhook only)
 const bot = new TelegramBot(TOKEN);
-// Set webhook to your Render app URL
-bot.setWebHook(WEBHOOK_URL);
 
-// ADD THIS to forward webhook requests to the bot
+// 🔗 Forward webhook requests from Telegram to bot
 app.post(`/bot${TOKEN}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
+// 🟢 Basic web check route (for testing Render port binding)
+app.get('/', (_req, res) => {
+  console.log('Root route hit!');
+  res.send('✅ Webhook-based Telegram bot is live!');
+});
 
-console.log(`🔗 Webhook set to: ${WEBHOOK_URL}`);
+// Set webhook after server starts
+app.listen(PORT, async () => {
+  console.log(`🌐 Server listening on port ${PORT}`);
+  try {
+    await bot.setWebHook(WEBHOOK_URL);
+    console.log(`📡 Webhook set to: ${WEBHOOK_URL}`);
+  } catch (e) {
+    console.error('❌ Failed to set webhook:', e.message);
+  }
+});
 
-// Respond to basic commands
+// Handle /start command
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, '👋 Welcome! Choose an option:', {
@@ -39,9 +50,11 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
+// Handle button clicks
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
+
   let response = '';
   let buttons = {
     reply_markup: {
@@ -54,7 +67,8 @@ bot.on('callback_query', (query) => {
   } else if (data === 'status') {
     response = '✅ All systems operational.';
   } else if (data === 'main_menu') {
-    response = '👋 Main Menu:', buttons = {
+    response = '👋 Main Menu:';
+    buttons = {
       reply_markup: {
         inline_keyboard: [[
           { text: 'Ping', callback_data: 'ping' },
@@ -71,13 +85,7 @@ bot.on('callback_query', (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// Dummy home route for testing
-app.get('/', (req, res) => {
-  res.send('✅ Webhook-based Telegram bot is live!');
-});
-
-
-// === Start child scripts (new.js and telegram.js) ===
+// === Spawn monitor.js and telegram.js ===
 function startProcess(name, script) {
   const child = spawn('node', [path.join(__dirname, script)], {
     stdio: 'inherit',
@@ -92,8 +100,3 @@ function startProcess(name, script) {
 
 startProcess('Wallet Monitor', 'new.js');
 startProcess('Telegram CSV Watcher', 'telegram.js');
-
-app.listen(PORT, () => {
-  console.log(`🌐 Webhook server running on port ${PORT}`);
-  bot.setWebHook(WEBHOOK_URL); // ✅ Safe to set webhook AFTER server is listening
-});
