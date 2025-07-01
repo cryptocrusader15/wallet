@@ -173,9 +173,9 @@ async function getTokenName(tokenAddress) {
     const transferEventSignature = web3.utils.sha3('Transfer(address,address,uint256)');
     const filter = {
         topics: [
-            transferEventSignature,
+            transferEventSignature/*,
             null,
-            TARGET_WALLETS.map(wallet => padAddress(wallet))
+            TARGET_WALLETS.map(wallet => padAddress(wallet))*/
         ]
     };
 
@@ -194,8 +194,30 @@ async function getTokenName(tokenAddress) {
             if (processedTransactions.has(log.transactionHash)) return;
             processedTransactions.set(log.transactionHash, true); // value doesn't matter, just presence
 
+         if (log.topics.length !== 3) return;
 
-         if (log.topics.length < 3) return;
+  let decoded;
+  try {
+    decoded = web3.eth.abi.decodeLog(
+      [
+        { type: 'address', name: 'from', indexed: true },
+        { type: 'address', name: 'to', indexed: true },
+        { type: 'uint256', name: 'value', indexed: false }
+      ],
+      log.data,
+      [log.topics[1], log.topics[2]]
+    );
+  } catch (err) {
+    console.error('Decoding error', err);
+    return;
+  }
+
+  const to = decoded.to.toLowerCase();
+  if (!TARGET_WALLETS.includes(to)) return;
+
+  const from = decoded.from;
+  const value = decoded.value;
+       /*  if (log.topics.length < 3) return;
 
         const fromAddress = '0x' + log.topics[1].slice(26).toLowerCase();
         const toAddress = '0x' + log.topics[2].slice(26).toLowerCase();
@@ -205,10 +227,11 @@ async function getTokenName(tokenAddress) {
 
         // ✅ Ensure we haven’t already processed this tx
         if (processedTransactions.has(log.transactionHash)) return;
-        processedTransactions.set(log.transactionHash, true);
+        processedTransactions.set(log.transactionHash, true);*/
 
         const tx = await web3.eth.getTransaction(log.transactionHash);
         if (!tx || !tx.from) return;
+
         const tokenName = await getTokenName(log.address);
         const tokenSymbol = await getTokenSymbol(log.address);
         const tokenPrice = await getTokenPrice(log.address);
@@ -217,10 +240,10 @@ async function getTokenName(tokenAddress) {
         const dexscreenerUrl = `https://dexscreener.com/bsc/${log.address}`;
 
         console.log(`\n[${timestamp}] TOKEN BUY DETECTED`);     
-        console.log(`Sent From: ${fromAddress}`);
+        console.log(`Sent From: ${from}`);
         console.log(`Token Address: ${log.address}`);    
         console.log(`Token Name: ${tokenName}`);
-        console.log(`Buyer Wallet: ${toAddress}`);        
+        console.log(`Buyer Wallet: ${to}`);        
         console.log(`Txn: https://bscscan.com/tx/${log.transactionHash}`); 
         console.log(`DexScreener: ${dexscreenerUrl}`);
         console.log('----------------------------------------');
