@@ -3,10 +3,6 @@
 session.txt
 state.json
 
-# === Logs and CSVs ===
-logs.csv
-*.log
-
 # === Node dependencies ===
 node_modules/
 npm-debug.log*
