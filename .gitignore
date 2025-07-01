@@ -3,7 +3,10 @@
 session.txt
 state.json
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 54a52e9f37144ae8640cb888b66f3e671e37eeeb
 # === Node dependencies ===
 node_modules/
 npm-debug.log*
